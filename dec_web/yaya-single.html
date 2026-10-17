@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>yaya · 鸭鸭图解码器</title>
+  <style>
+    :root { --bg:#f7f6ee; --card:#fffef9; --ink:#29352c; --muted:#637066; --accent:#237653; --line:#dce2d4; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; padding:24px 16px; color:var(--ink); font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif; background:radial-gradient(circle at 10% 10%,#f4d78c55,transparent 36%),radial-gradient(circle at 88% 92%,#8bc4a94d,transparent 30%),linear-gradient(130deg,var(--bg),#e9f0e8); }
+    button,input { font:inherit; }
+    button { cursor:pointer; }
+    button:focus-visible,a:focus-visible,[tabindex]:focus-visible { outline:3px solid #d49a2a; outline-offset:4px; }
+    .wrap { width:min(980px,100%); margin:auto; background:var(--card); border:1px solid var(--line); border-radius:20px; box-shadow:0 24px 48px #14221818; overflow:hidden; }
+    .head { padding:24px; border-bottom:1px dashed var(--line); }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .duck { display:grid; place-items:center; width:48px; height:48px; border-radius:15px; background:#fff0b8; font-size:30px; flex-shrink:0; }
+    .eyebrow { margin:0 0 4px; color:var(--accent); font-size:11px; font-weight:700; letter-spacing:.16em; }
+    h1 { margin:0; font-size:1.35rem; letter-spacing:.02em; }
+    .sub { margin:14px 0 0; color:var(--muted); font-size:.9rem; line-height:1.7; }
+    .row { padding:18px 24px; border-bottom:1px dashed var(--line); }
+    label { display:block; margin-bottom:8px; font-size:.9rem; font-weight:600; }
+    label span { color:var(--muted); font-weight:400; }
+    .password-row { display:flex; gap:8px; }
+    #password { width:100%; min-width:0; padding:11px 12px; border:1px solid var(--line); border-radius:10px; outline:none; background:white; }
+    #password:focus { border-color:var(--accent); box-shadow:0 0 0 3px #23765320; }
+    .btn { border:0; border-radius:10px; padding:10px 16px; color:white; font-size:.88rem; font-weight:700; background:linear-gradient(135deg,var(--accent),#339368); }
+    .btn.secondary { color:#4b594e; background:#edf0e8; }
+    .password-row .btn { flex-shrink:0; }
+    .drop { border:2px dashed #bbc9b6; border-radius:14px; padding:26px 14px; text-align:center; background:#fafcf6; transition:background .2s,border-color .2s; cursor:pointer; }
+    .drop.dragover { border-color:var(--accent); background:#edf7ef; }
+    .upload-icon { display:block; margin:0 auto 10px; color:var(--accent); }
+    .drop strong { display:block; margin-bottom:8px; font-size:1rem; }
+    .drop small { color:var(--muted); line-height:1.6; }
+    .btnline { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:16px; }
+    .hint { margin:12px 0 0; color:var(--muted); font-size:.8rem; line-height:1.7; text-align:center; }
+    .status { margin-top:16px; font-size:.85rem; color:var(--accent); }
+    .log { margin:10px 0 0; padding:12px; max-height:160px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; border:1px solid var(--line); border-radius:10px; background:#fbfcf8; color:var(--muted); font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    .results-heading { display:flex; align-items:center; justify-content:space-between; padding:20px 24px 0; }
+    h2 { margin:0; font-size:1rem; }
+    .count { color:var(--muted); font-size:.8rem; }
+    .grid { padding:16px 24px 24px; display:grid; grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr)); gap:14px; }
+    .empty { grid-column:1/-1; padding:32px 14px; border:1px dashed var(--line); border-radius:12px; text-align:center; color:var(--muted); background:#f8faf4; font-size:.9rem; line-height:1.8; }
+    .card { min-width:0; display:flex; flex-direction:column; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:white; }
+    .thumb,.thumb-video,.file-preview,.text-preview { width:100%; height:220px; margin:0; background:#eef2e9; }
+    .thumb { display:block; object-fit:contain; cursor:zoom-in; }
+    .thumb-video { display:block; background:#18201b; }
+    .file-preview { display:grid; place-items:center; color:var(--muted); }
+    .text-preview { padding:14px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:13px/1.7 ui-monospace,Consolas,monospace; }
+    .audio-preview { width:100%; margin:20px 0; }
+    .meta { padding:12px; flex:1; color:var(--muted); font-size:12px; line-height:1.8; overflow-wrap:anywhere; }
+    .name { margin-bottom:6px; color:var(--ink); font-size:13px; font-weight:700; }
+    .actions { display:flex; gap:8px; padding:0 12px 12px; }
+    .actions .btn { flex:1; padding:8px 10px; font-size:12px; }
+    .footer { padding:0 24px 20px; text-align:center; color:var(--muted); font-size:12px; }
+    dialog { max-width:calc(100vw - 24px); max-height:calc(100dvh - 24px); padding:12px; border:0; border-radius:14px; background:#fffef9; }
+    dialog::backdrop { background:#101b17d9; }
+    .modal-toolbar { display:flex; justify-content:flex-end; margin-bottom:10px; }
+    dialog img { display:block; max-width:100%; max-height:calc(100dvh - 110px); object-fit:contain; margin:auto; }
+    @media(max-width:640px) { body { padding:12px 8px; } .head,.row { padding:18px 14px; } .results-heading { padding:18px 14px 0; } .grid { padding:14px; } h1 { font-size:1.14rem; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="head">
+      <div class="brand"><span class="duck" aria-hidden="true">🦆</span><div><p class="eyebrow">YAYA · LOCAL DECODER</p><h1>鸭鸭图解码器</h1></div></div>
+      <p class="sub">把鸭鸭图里的内容找回来。先填写密码，再放入图片，即可预览和下载原始文件。</p>
+    </header>
+    <section class="row" aria-label="解码密码">
+      <label for="password">解码密码 <span>／ 无密码可留空</span></label>
+      <div class="password-row"><input id="password" type="password" placeholder="先输入密码，再拖入或选择图片" autocomplete="off" spellcheck="false"><button id="togglePassword" class="btn secondary" type="button" aria-label="显示密码" aria-pressed="false">显示</button></div>
+    </section>
+    <section class="row" aria-label="选择鸭鸭图">
+      <div id="dropZone" class="drop" tabindex="0" role="button" aria-label="选择或拖入鸭鸭图，支持多张图片">
+        <svg class="upload-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg>
+        <strong>拖入鸭鸭图，或点击选择图片</strong>
+        <small>支持多图批量 · 选择后自动解码 · Ctrl / ⌘ + V 粘贴图片</small>
+      </div>
+      <div class="btnline"><button id="pickBtn" class="btn" type="button">选择图片</button><button id="clearBtn" class="btn secondary" type="button">清空结果</button></div>
+      <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/bmp,.png,.jpg,.jpeg,.webp,.bmp" multiple hidden>
+      <p class="hint">请使用原始 PNG 鸭鸭图；截图、缩放或有损压缩会破坏隐藏数据。自动识别全部三档编码。</p>
+      <div id="status" class="status" role="status" aria-live="polite">等待添加图片</div>
+      <pre id="log" class="log" role="log" aria-label="解码日志" hidden></pre>
+    </section>
+    <div class="results-heading"><h2>解码结果</h2><span id="resultCount" class="count">0 个文件</span></div>
+    <section id="resultGrid" class="grid" aria-label="解码结果"><div class="empty">暂无解码结果<br>图片、视频和文本会显示在这里</div></section>
+    <footer class="footer">所有解码均在当前浏览器本地完成，图片和密码不会上传。</footer>
+  </main>
+  <dialog id="imgModal" aria-label="解码图片预览"><div class="modal-toolbar"><button id="closeModal" class="btn secondary" type="button">关闭预览 · Esc</button></div><img id="modalImg" alt="解码图片预览"></dialog>
+  <script>
+/* Duck payload format: see duck_payload_exporter.py and duck_decode_node.py. */
+(function (root) {
+  "use strict";
+  const utf8 = new TextEncoder();
+  const pause = () => new Promise(resolve => setTimeout(resolve, 0));
+  function checkAbort(signal) {
+    if (signal?.aborted) throw new DOMException("已取消", "AbortError");
+  }
+
+  // Local SHA-256 also works on file:// and ordinary HTTP, without a CDN.
+  const K = new Uint32Array([
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ]);
+  const rotate = (x, n) => (x >>> n) | (x << (32 - n));
+  function sha256(bytes) {
+    const padded = new Uint8Array(Math.ceil((bytes.length + 9) / 64) * 64);
+    padded.set(bytes);
+    padded[bytes.length] = 128;
+    const view = new DataView(padded.buffer);
+    view.setUint32(padded.length - 8, Math.floor(bytes.length / 0x20000000));
+    view.setUint32(padded.length - 4, (bytes.length * 8) >>> 0);
+    const h = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+    const w = new Uint32Array(64);
+    for (let offset = 0; offset < padded.length; offset += 64) {
+      for (let i = 0; i < 16; i++) w[i] = view.getUint32(offset + i * 4);
+      for (let i = 16; i < 64; i++) {
+        const x = w[i - 15], y = w[i - 2];
+        const s0 = rotate(x, 7) ^ rotate(x, 18) ^ (x >>> 3);
+        const s1 = rotate(y, 17) ^ rotate(y, 19) ^ (y >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+      }
+      let [a,b,c,d,e,f,g,v] = h;
+      for (let i = 0; i < 64; i++) {
+        const s1 = rotate(e, 6) ^ rotate(e, 11) ^ rotate(e, 25);
+        const t1 = (v + s1 + ((e & f) ^ (~e & g)) + K[i] + w[i]) >>> 0;
+        const s0 = rotate(a, 2) ^ rotate(a, 13) ^ rotate(a, 22);
+        const t2 = (s0 + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+        v=g; g=f; f=e; e=(d+t1)>>>0; d=c; c=b; b=a; a=(t1+t2)>>>0;
+      }
+      [a,b,c,d,e,f,g,v].forEach((value, i) => { h[i] = (h[i] + value) >>> 0; });
+    }
+    const out = new Uint8Array(32);
+    const outView = new DataView(out.buffer);
+    h.forEach((value, i) => outView.setUint32(i * 4, value));
+    return out;
+  }
+
+  async function extractPayload(rgba, width, height, k, signal) {
+    const skipW = Math.floor(width * 0.4), skipH = Math.floor(height * 0.08);
+    const capacity = (width * height - skipW * skipH) * 3 * k;
+    if (capacity < 32) throw new Error("图像数据不足");
+    let x = 0, y = 0, channel = 0, buffer = 0, available = 0;
+    function byte() {
+      while (available < 8) {
+        if (y < skipH && x < skipW) x = skipW;
+        buffer = (buffer << k) | (rgba[(y * width + x) * 4 + channel] & ((1 << k) - 1));
+        available += k;
+        if (++channel === 3) {
+          channel = 0;
+          if (++x === width) { x = 0; y++; }
+        }
+      }
+      available -= 8;
+      const value = (buffer >>> available) & 255;
+      buffer &= (1 << available) - 1;
+      return value;
+    }
+    const length = byte() * 0x1000000 + byte() * 0x10000 + byte() * 256 + byte();
+    if (length < 6 || 32 + length * 8 > capacity) throw new Error("载荷长度异常");
+    const payload = new Uint8Array(length);
+    for (let i = 0; i < length; i++) {
+      if (i % 262144 === 0) { await pause(); checkAbort(signal); }
+      payload[i] = byte();
+    }
+    return payload;
+  }
+
+  async function parseHeader(header, password, signal) {
+    if (header.length < 6 || header[0] > 1) throw new Error("文件头损坏");
+    const encrypted = header[0] === 1;
+    let offset = encrypted ? 49 : 1;
+    if (header.length < offset + 1) throw new Error("文件头损坏");
+    const extLen = header[offset++];
+    if (!extLen || header.length < offset + extLen + 4) throw new Error("文件头损坏");
+    const ext = new TextDecoder("utf-8", { fatal: true }).decode(header.subarray(offset, offset + extLen));
+    if (!/^\.?[a-z0-9][a-z0-9._-]*$/i.test(ext)) throw new Error("文件扩展名无效");
+    offset += extLen;
+    const length = new DataView(header.buffer, header.byteOffset + offset, 4).getUint32(0);
+    offset += 4;
+    if (length !== header.length - offset) throw new Error("数据长度不匹配");
+    let data = header.subarray(offset);
+    if (encrypted) {
+      const passwordError = message => Object.assign(new Error(message), { code: "PASSWORD" });
+      if (!password) throw passwordError("此图片需要密码，请在上方输入密码后重新选择图片");
+      const saltHex = Array.from(header.subarray(33, 49), b => b.toString(16).padStart(2, "0")).join("");
+      const material = utf8.encode(password + saltHex);
+      const hash = sha256(material);
+      if (!hash.every((b, i) => b === header[i + 1])) throw passwordError("密码错误，请修改密码后重新选择图片");
+      const plain = new Uint8Array(data.length);
+      for (let start = 0, counter = 0; start < data.length; start += 32, counter++) {
+        if (start % 65536 === 0) { await pause(); checkAbort(signal); }
+        const suffix = utf8.encode(String(counter));
+        const input = new Uint8Array(material.length + suffix.length);
+        input.set(material); input.set(suffix, material.length);
+        const key = sha256(input);
+        for (let i = 0; i < Math.min(32, data.length - start); i++) plain[start + i] = data[start + i] ^ key[i];
+      }
+      data = plain;
+    }
+    return { ext: ext.replace(/^\./, "").toLowerCase(), data, encrypted };
+  }
+
+  async function decodePixels(rgba, width, height, password = "", signal) {
+    checkAbort(signal);
+    if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0 || rgba.length !== width * height * 4) {
+      throw new Error("图像尺寸无效");
+    }
+    let passwordError;
+    for (const k of [2, 6, 8]) {
+      try {
+        const header = await extractPayload(rgba, width, height, k, signal);
+        return { ...await parseHeader(header, password, signal), bits: k };
+      } catch (error) {
+        if (error.name === "AbortError") throw error;
+        if (error.code === "PASSWORD") passwordError = error;
+      }
+    }
+    throw passwordError || new Error("未识别到完整的鸭鸭图数据，请使用未经压缩、缩放或截图的原始图片");
+  }
+
+  async function readPixels(blob) {
+    let bitmap;
+    const canvas = document.createElement("canvas");
+    try {
+      bitmap = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none", imageOrientation: "none" });
+      canvas.width = bitmap.width; canvas.height = bitmap.height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) throw new Error("浏览器无法创建图像画布");
+      ctx.drawImage(bitmap, 0, 0);
+      return ctx.getImageData(0, 0, canvas.width, canvas.height);
+    } finally {
+      bitmap?.close();
+      canvas.width = canvas.height = 0;
+    }
+  }
+
+  async function decodeFile(file, password = "", signal) {
+    const pixels = await readPixels(file);
+    const result = await decodePixels(pixels.data, pixels.width, pixels.height, password, signal);
+    if (result.ext.endsWith(".binpng")) {
+      const binary = await readPixels(new Blob([result.data], { type: "image/png" }));
+      checkAbort(signal);
+      const raw = new Uint8Array(binary.width * binary.height * 3);
+      for (let src = 0, dest = 0; src < binary.data.length; src += 4) {
+        if (src % 1048576 === 0) { await pause(); checkAbort(signal); }
+        raw[dest++] = binary.data[src]; raw[dest++] = binary.data[src + 1]; raw[dest++] = binary.data[src + 2];
+      }
+      // Match binpng_bytes_to_mp4_bytes: this legacy format has no original length.
+      let end = raw.length;
+      while (end && raw[end - 1] === 0) end--;
+      result.data = raw.subarray(0, end);
+      result.ext = result.ext.slice(0, -7) || "mp4";
+      result.binpng = true;
+    }
+    checkAbort(signal);
+    return result;
+  }
+  const api = { decodeFile, decodePixels, sha256 };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.DuckDecoder = api;
+})(globalThis);
+
+  </script>
+  <script>
+"use strict";
+const $ = id => document.getElementById(id);
+const urls = new Set();
+let controller = new AbortController();
+let queue = [];
+let running = false;
+let completed = 0;
+let failed = 0;
+const mimeTypes = {
+  png:"image/png", jpg:"image/jpeg", jpeg:"image/jpeg", webp:"image/webp", gif:"image/gif", bmp:"image/bmp", avif:"image/avif",
+  mp4:"video/mp4", webm:"video/webm", ogv:"video/ogg", mov:"video/quicktime", m4v:"video/x-m4v",
+  mp3:"audio/mpeg", wav:"audio/wav", ogg:"audio/ogg", m4a:"audio/mp4", flac:"audio/flac",
+  txt:"text/plain;charset=utf-8", json:"application/json", pdf:"application/pdf"
+};
+function sizeLabel(n) {
+  return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(2)} MB`;
+}
+function log(message) {
+  $("log").hidden = false;
+  const lines = $("log").textContent.split("\n").filter(Boolean);
+  lines.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+  $("log").textContent = lines.slice(-200).join("\n");
+  $("log").scrollTop = $("log").scrollHeight;
+}
+function updateCount() {
+  const count = $("resultGrid").querySelectorAll(".card").length;
+  $("resultCount").textContent = `${count} 个文件`;
+  if (!count) $("resultGrid").innerHTML = '<div class="empty">暂无解码结果<br>图片、视频和文本会显示在这里</div>';
+}
+function closeModal() { $("imgModal").close(); $("modalImg").removeAttribute("src"); }
+function clearAll() {
+  controller.abort();
+  controller = new AbortController();
+  queue = [];
+  completed = failed = 0;
+  closeModal();
+  $("resultGrid").replaceChildren();
+  for (const url of urls) URL.revokeObjectURL(url);
+  urls.clear();
+  updateCount();
+  $("log").textContent = ""; $("log").hidden = true;
+  $("status").textContent = "已清空，等待添加图片";
+  $("fileInput").value = "";
+}
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function addResult(sourceName, result) {
+  $("resultGrid").querySelector(".empty")?.remove();
+  const { ext, data } = result;
+  const stem = sourceName.replace(/\.[^.]+$/, "");
+  const name = `${stem}_decoded.${ext || "bin"}`.replace(/[\\/:*?"<>|\x00-\x1f]/g, "_");
+  const mime = mimeTypes[ext] || "application/octet-stream";
+  const url = URL.createObjectURL(new Blob([data], { type: mime }));
+  urls.add(url);
+  const card = element("article", "card");
+  if (mime.startsWith("image/")) {
+    const img = element("img", "thumb");
+    img.src = url; img.alt = name; img.tabIndex = 0; img.setAttribute("role", "button");
+    img.setAttribute("aria-label", `放大预览 ${name}`);
+    const open = () => { $("modalImg").src = url; $("modalImg").alt = name; $("imgModal").showModal(); };
+    img.addEventListener("click", open);
+    img.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+    img.addEventListener("error", () => img.replaceWith(element("div", "file-preview", "无法预览此图片，请下载查看")), { once: true });
+    card.append(img);
+  } else if (mime.startsWith("video/") || mime.startsWith("audio/")) {
+    const video = mime.startsWith("video/");
+    const media = element(video ? "video" : "audio", video ? "thumb-video" : "audio-preview");
+    media.src = url; media.controls = true; media.preload = "metadata";
+    if (video) media.playsInline = true;
+    card.append(media);
+    media.addEventListener("error", () => media.replaceWith(element("div", "file-preview", "浏览器不支持预览，请下载播放")), { once: true });
+  } else if (["txt", "json", "md", "csv", "log"].includes(ext)) {
+    const sample = data.subarray(0, 65536);
+    let text;
+    try { text = new TextDecoder("utf-8", { fatal: true }).decode(sample, { stream: data.length > sample.length }); }
+    catch { text = new TextDecoder("gbk").decode(sample); }
+    card.append(element("pre", "text-preview", text + (data.length > sample.length ? "\n…预览已截断，下载可查看完整内容" : "")));
+  } else {
+    card.append(element("div", "file-preview", `${ext.toUpperCase()} 文件 · 下载后查看`));
+  }
+  const meta = element("div", "meta");
+  meta.append(element("div", "name", name), element("div", "", `来源：${sourceName}`), element("div", "", `大小：${sizeLabel(data.length)} · ${result.bits} 位${result.encrypted ? " · 密码已验证" : ""}`));
+  if (result.binpng) meta.append(element("div", "", "已还原二进制图片中的视频"));
+  const actions = element("div", "actions");
+  const download = element("button", "btn", "下载"); download.type = "button";
+  download.addEventListener("click", () => {
+    const a = document.createElement("a"); a.href = url; a.download = name;
+    document.body.append(a); a.click(); a.remove();
+  });
+  const remove = element("button", "btn secondary", "移除"); remove.type = "button";
+  remove.addEventListener("click", () => {
+    if ($("modalImg").getAttribute("src") === url) closeModal();
+    card.querySelectorAll("video,audio").forEach(media => { media.pause(); media.removeAttribute("src"); media.load(); });
+    card.remove(); URL.revokeObjectURL(url); urls.delete(url); updateCount();
+  });
+  actions.append(download, remove); card.append(meta, actions); $("resultGrid").prepend(card); updateCount();
+}
+async function drainQueue() {
+  if (running) return;
+  running = true;
+  try {
+    while (queue.length) {
+      const { file, password, signal } = queue.shift();
+      if (signal.aborted) continue;
+      $("status").textContent = `正在解码：${file.name} · 等待 ${queue.length} 张`;
+      log(`开始：${file.name}`);
+      try {
+        const result = await DuckDecoder.decodeFile(file, password, signal);
+        if (signal.aborted) continue;
+        addResult(file.name, result); completed++;
+        log(`成功：${file.name} → .${result.ext}（${sizeLabel(result.data.length)}）`);
+      } catch (error) {
+        if (signal.aborted) continue;
+        failed++;
+        log(`失败：${file.name} · ${error.message || error}`);
+      }
+      if (!signal.aborted) $("status").textContent = `处理完成 · 成功 ${completed} 张，失败 ${failed} 张`;
+    }
+  } finally { running = false; }
+}
+function handleFiles(fileList) {
+  const files = Array.from(fileList).filter(file => file.type.startsWith("image/") || /\.(png|jpe?g|webp|bmp)$/i.test(file.name));
+  if (!files.length) { log("未检测到图片文件，请选择原始鸭鸭图"); return; }
+  const password = $("password").value;
+  const signal = controller.signal;
+  queue.push(...files.map(file => ({ file, password, signal })));
+  void drainQueue();
+}
+$("pickBtn").addEventListener("click", () => $("fileInput").click());
+$("dropZone").addEventListener("click", () => $("fileInput").click());
+$("dropZone").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("fileInput").click(); } });
+$("fileInput").addEventListener("change", e => { handleFiles(e.target.files); e.target.value = ""; });
+$("clearBtn").addEventListener("click", clearAll);
+$("togglePassword").addEventListener("click", () => {
+  const show = $("password").type === "password";
+  $("password").type = show ? "text" : "password";
+  $("togglePassword").textContent = show ? "隐藏" : "显示";
+  $("togglePassword").setAttribute("aria-label", show ? "隐藏密码" : "显示密码");
+  $("togglePassword").setAttribute("aria-pressed", String(show));
+});
+for (const type of ["dragenter", "dragover", "dragleave", "drop"]) {
+  $("dropZone").addEventListener(type, e => { e.preventDefault(); $("dropZone").classList.toggle("dragover", type === "dragenter" || type === "dragover"); });
+}
+document.addEventListener("dragover", e => { e.preventDefault(); });
+document.addEventListener("drop", e => { e.preventDefault(); if (e.dataTransfer?.files.length) handleFiles(e.dataTransfer.files); });
+document.addEventListener("paste", e => {
+  const files = Array.from(e.clipboardData?.items || []).filter(item => item.kind === "file" && item.type.startsWith("image/")).map(item => item.getAsFile()).filter(Boolean);
+  if (files.length) { e.preventDefault(); handleFiles(files); }
+});
+$("closeModal").addEventListener("click", closeModal);
+$("imgModal").addEventListener("click", e => { if (e.target === $("imgModal")) closeModal(); });
+$("imgModal").addEventListener("close", () => $("modalImg").removeAttribute("src"));
+
+  </script>
+</body>
+</html>
