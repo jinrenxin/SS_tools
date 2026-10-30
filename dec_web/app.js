@@ -6,6 +6,7 @@ let queue = [];
 let running = false;
 let completed = 0;
 let failed = 0;
+let imageViewer = null;
 const mimeTypes = {
   png:"image/png", jpg:"image/jpeg", jpeg:"image/jpeg", webp:"image/webp", gif:"image/gif", bmp:"image/bmp", avif:"image/avif",
   mp4:"video/mp4", webm:"video/webm", ogv:"video/ogg", mov:"video/quicktime", m4v:"video/x-m4v",
@@ -27,7 +28,45 @@ function updateCount() {
   $("resultCount").textContent = `${count} 个文件`;
   if (!count) $("resultGrid").innerHTML = '<div class="empty">暂无解码结果<br>图片、视频和文本会显示在这里</div>';
 }
-function closeModal() { $("imgModal").close(); $("modalImg").removeAttribute("src"); }
+function closeModal() {
+  if ($("imgModal").open) $("imgModal").close();
+  $("modalImg").removeAttribute("src");
+}
+function showLegacyPreview(img) {
+  $("modalImg").src = img.src;
+  $("modalImg").alt = img.alt;
+  $("imgModal").showModal();
+}
+function refreshImageViewer() {
+  if (typeof window.Viewer !== "function") return;
+  if (!$('resultGrid').querySelector(".thumb")) {
+    if (imageViewer) imageViewer.destroy();
+    imageViewer = null;
+    return;
+  }
+  if (!imageViewer) {
+    imageViewer = new window.Viewer($("resultGrid"), {
+      filter: image => image.classList.contains("thumb"),
+      navbar: true,
+      title: image => image.alt || "图片预览",
+      toolbar: {
+        zoomIn: 1,
+        zoomOut: 1,
+        oneToOne: 1,
+        reset: 1,
+        prev: 1,
+        play: 0,
+        next: 1,
+        rotateLeft: 1,
+        rotateRight: 1,
+        flipHorizontal: 1,
+        flipVertical: 1
+      }
+    });
+  } else {
+    imageViewer.update();
+  }
+}
 function clearAll() {
   controller.abort();
   controller = new AbortController();
@@ -41,6 +80,7 @@ function clearAll() {
   $("log").textContent = ""; $("log").hidden = true;
   $("status").textContent = "已清空，等待添加图片";
   $("fileInput").value = "";
+  refreshImageViewer();
 }
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -61,9 +101,18 @@ function addResult(sourceName, result) {
     const img = element("img", "thumb");
     img.src = url; img.alt = name; img.tabIndex = 0; img.setAttribute("role", "button");
     img.setAttribute("aria-label", `放大预览 ${name}`);
-    const open = () => { $("modalImg").src = url; $("modalImg").alt = name; $("imgModal").showModal(); };
-    img.addEventListener("click", open);
-    img.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+    img.addEventListener("click", () => { if (!imageViewer) showLegacyPreview(img); });
+    img.addEventListener("keydown", e => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      if (imageViewer) {
+        const images = [...$("resultGrid").querySelectorAll(".thumb")];
+        imageViewer.show();
+        imageViewer.view(images.indexOf(img));
+      } else {
+        showLegacyPreview(img);
+      }
+    });
     img.addEventListener("error", () => img.replaceWith(element("div", "file-preview", "无法预览此图片，请下载查看")), { once: true });
     card.append(img);
   } else if (mime.startsWith("video/") || mime.startsWith("audio/")) {
@@ -93,11 +142,12 @@ function addResult(sourceName, result) {
   });
   const remove = element("button", "btn secondary", "移除"); remove.type = "button";
   remove.addEventListener("click", () => {
+    if (imageViewer?.isShown) imageViewer.hide();
     if ($("modalImg").getAttribute("src") === url) closeModal();
     card.querySelectorAll("video,audio").forEach(media => { media.pause(); media.removeAttribute("src"); media.load(); });
-    card.remove(); URL.revokeObjectURL(url); urls.delete(url); updateCount();
+    card.remove(); URL.revokeObjectURL(url); urls.delete(url); updateCount(); refreshImageViewer();
   });
-  actions.append(download, remove); card.append(meta, actions); $("resultGrid").prepend(card); updateCount();
+  actions.append(download, remove); card.append(meta, actions); $("resultGrid").prepend(card); updateCount(); refreshImageViewer();
 }
 async function drainQueue() {
   if (running) return;
@@ -154,3 +204,4 @@ document.addEventListener("paste", e => {
 $("closeModal").addEventListener("click", closeModal);
 $("imgModal").addEventListener("click", e => { if (e.target === $("imgModal")) closeModal(); });
 $("imgModal").addEventListener("close", () => $("modalImg").removeAttribute("src"));
+refreshImageViewer();
